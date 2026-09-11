@@ -1,0 +1,117 @@
+name: Build and publish Sonochka Study 14.1.1
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/hotfix-v14.1.1.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build complete update package
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build
+          cd build
+          curl -fL --retry 3 -o base.zip "https://github.com/sicinsane/SonochkaStudy/releases/download/v14.1.0/SonochkaStudy-update.zip"
+          unzip -q base.zip -d app
+          cd app
+
+          # Add the missing Windows launcher directly into the update package.
+          printf '%s' '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' | base64 -d > SonochkaStudy.exe
+
+          cat > SonaStudy.cmd <<'EOF'
+          @echo off
+          setlocal
+          set "ROOT=%~dp0"
+          if exist "%ROOT%SonochkaStudy.exe" (
+            start "" "%ROOT%SonochkaStudy.exe"
+            exit /b
+          )
+          powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "%ROOT%Launch.ps1"
+          EOF
+          sed -i 's/^          //' SonaStudy.cmd
+
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('SonaStudy.html')
+          s=p.read_text(encoding='utf-8')
+          s=s.replace("const APP_VERSION='14.1.0';","const APP_VERSION='14.1.1';")
+          s=s.replace('id="updateVersionBadge">v14.1.0<','id="updateVersionBadge">v14.1.1<')
+          p.write_text(s,encoding='utf-8')
+
+          p=Path('SonaUpdater.ps1')
+          s=p.read_text(encoding='utf-8')
+          marker="if (-not (Test-Path -LiteralPath (Join-Path $root 'version.txt'))) { throw 'Пакет обновления неполный: нет version.txt.' }"
+          extra=marker+"\n  if (-not (Test-Path -LiteralPath (Join-Path $root 'SonochkaStudy.exe'))) { throw 'Пакет обновления неполный: нет SonochkaStudy.exe.' }\n  if (-not (Test-Path -LiteralPath (Join-Path $root 'SonaStudy.cmd'))) { throw 'Пакет обновления неполный: нет SonaStudy.cmd.' }"
+          if "нет SonochkaStudy.exe" not in s:
+              s=s.replace(marker,extra)
+          old="@('SonaStudy.html','SonaMusicBridge.ps1','Launch.ps1','SonaUpdater.ps1','version.txt','startup-chime.wav')"
+          new="@('SonaStudy.html','SonaMusicBridge.ps1','Launch.ps1','SonaUpdater.ps1','version.txt','startup-chime.wav','SonochkaStudy.exe','SonaStudy.cmd')"
+          s=s.replace(old,new)
+          p.write_text(s,encoding='utf-8')
+          PY
+
+          printf '14.1.1\n' > version.txt
+          cat > CHANGELOG-14.1.1.md <<'EOF'
+          # Соночка Study 14.1.1
+
+          Hotfix обновлятора:
+          - update-пакет теперь содержит SonochkaStudy.exe и SonaStudy.cmd;
+          - обновлятор отклоняет неполный пакет без launcher-файлов;
+          - launcher-файлы входят в резервную копию перед заменой;
+          - после обновления приложение может корректно перезапуститься.
+          EOF
+          sed -i 's/^          //' CHANGELOG-14.1.1.md
+
+          rm -f base.zip
+          cd ..
+          (cd app && zip -q -9 ../SonochkaStudy-update.zip SonaStudy.html SonaMusicBridge.ps1 Launch.ps1 SonaUpdater.ps1 startup-chime.wav version.txt CHANGELOG-14.1.1.md SonaStudy.cmd SonochkaStudy.exe)
+          cp SonochkaStudy-update.zip SonochkaStudy-v14.1.1-portable.zip
+          cp app/SonochkaStudy.exe ./SonochkaStudy.exe
+          sha256sum SonochkaStudy-update.zip | tee SHA256.txt
+          unzip -t SonochkaStudy-update.zip
+
+      - name: Publish v14.1.1 release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd build
+          gh release create v14.1.1 \
+            SonochkaStudy-update.zip \
+            SonochkaStudy-v14.1.1-portable.zip \
+            SonochkaStudy.exe \
+            --repo "${{ github.repository }}" \
+            --title "Соночка Study v14.1.1 — hotfix запуска" \
+            --notes "Исправлен критический баг обновления: полный update-пакет теперь содержит SonochkaStudy.exe и SonaStudy.cmd. Обновлятор проверяет наличие launcher-файлов до замены приложения."
+
+      - name: Point stable channel to v14.1.1
+        shell: bash
+        run: |
+          set -euo pipefail
+          HASH=$(cut -d' ' -f1 build/SHA256.txt)
+          cat > stable.json <<EOF
+          {
+            "version": "14.1.1",
+            "packageUrl": "https://github.com/sicinsane/SonochkaStudy/releases/download/v14.1.1/SonochkaStudy-update.zip",
+            "sha256": "$HASH",
+            "notes": "Hotfix запуска: update-пакет теперь содержит SonochkaStudy.exe и SonaStudy.cmd. Исправлен перезапуск после обновления."
+          }
+          EOF
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add stable.json
+          git commit -m "Point stable channel to v14.1.1"
+          git push
