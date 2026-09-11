@@ -1,0 +1,153 @@
+name: Build and publish Sonochka Study 14.1.3
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/hotfix-v14.1.3.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-release:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Enable MSVC
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Build and validate complete package
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          New-Item -ItemType Directory -Path build/app -Force | Out-Null
+          Invoke-WebRequest -Uri 'https://github.com/sicinsane/SonochkaStudy/releases/download/v14.1.0/SonochkaStudy-update.zip' -OutFile build/base.zip
+          Expand-Archive -LiteralPath build/base.zip -DestinationPath build/app -Force
+
+          @'
+          #define UNICODE
+          #define _UNICODE
+          #include <windows.h>
+          #include <shellapi.h>
+          #include <string>
+
+          int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int) {
+              std::wstring exe(32768, L'\0');
+              DWORD n = GetModuleFileNameW(nullptr, exe.data(), static_cast<DWORD>(exe.size()));
+              if (n == 0 || n >= exe.size()) return 2;
+              exe.resize(n);
+              size_t cut = exe.find_last_of(L"\\/");
+              if (cut == std::wstring::npos) return 3;
+              std::wstring dir = exe.substr(0, cut);
+              std::wstring script = dir + L"\\Launch.ps1";
+              if (GetFileAttributesW(script.c_str()) == INVALID_FILE_ATTRIBUTES) return 4;
+              SetCurrentDirectoryW(dir.c_str());
+              std::wstring args = L"-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File \"" + script + L"\"";
+              INT_PTR result = reinterpret_cast<INT_PTR>(ShellExecuteW(nullptr, L"open", L"powershell.exe", args.c_str(), dir.c_str(), SW_HIDE));
+              return result > 32 ? 0 : 5;
+          }
+          '@ | Set-Content -LiteralPath build/SonochkaStudy.cpp -Encoding utf8
+
+          cl.exe /nologo /O2 /EHsc /std:c++17 /DUNICODE /D_UNICODE build/SonochkaStudy.cpp /link /SUBSYSTEM:WINDOWS Shell32.lib /OUT:build/app/SonochkaStudy.exe
+          if ($LASTEXITCODE -ne 0) { throw 'MSVC failed to build SonochkaStudy.exe' }
+
+          $exe = (Resolve-Path 'build/app/SonochkaStudy.exe').Path
+          $bytes = [IO.File]::ReadAllBytes($exe)
+          if ($bytes.Length -lt 4096) { throw 'Launcher is unexpectedly small.' }
+          if ($bytes[0] -ne 0x4D -or $bytes[1] -ne 0x5A) { throw 'Launcher has no MZ header.' }
+          $peOffset = [BitConverter]::ToInt32($bytes, 0x3c)
+          if ([Text.Encoding]::ASCII.GetString($bytes, $peOffset, 4) -ne "PE`0`0") { throw 'Launcher has no PE header.' }
+          $machine = [BitConverter]::ToUInt16($bytes, $peOffset + 4)
+          if ($machine -ne 0x8664) { throw ('Launcher is not x64. Machine=0x{0:X4}' -f $machine) }
+
+          @'
+          @echo off
+          setlocal
+          set "ROOT=%~dp0"
+          if exist "%ROOT%SonochkaStudy.exe" (
+            start "" "%ROOT%SonochkaStudy.exe"
+            exit /b
+          )
+          powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "%ROOT%Launch.ps1"
+          '@ | Set-Content -LiteralPath build/app/SonaStudy.cmd -Encoding ascii
+
+          $htmlPath = 'build/app/SonaStudy.html'
+          $html = Get-Content -LiteralPath $htmlPath -Raw -Encoding utf8
+          $html = $html.Replace("const APP_VERSION='14.1.0';", "const APP_VERSION='14.1.3';")
+          $html = $html.Replace('id="updateVersionBadge">v14.1.0<', 'id="updateVersionBadge">v14.1.3<')
+          Set-Content -LiteralPath $htmlPath -Value $html -Encoding utf8
+
+          $updaterPath = 'build/app/SonaUpdater.ps1'
+          $updater = Get-Content -LiteralPath $updaterPath -Raw -Encoding utf8
+          $marker = "if (-not (Test-Path -LiteralPath (Join-Path `$root 'version.txt'))) { throw 'Пакет обновления неполный: нет version.txt.' }"
+          if ($updater -notmatch 'нет SonochkaStudy\.exe') {
+            $extra = $marker + "`n  if (-not (Test-Path -LiteralPath (Join-Path `$root 'SonochkaStudy.exe'))) { throw 'Пакет обновления неполный: нет SonochkaStudy.exe.' }`n  if (-not (Test-Path -LiteralPath (Join-Path `$root 'SonaStudy.cmd'))) { throw 'Пакет обновления неполный: нет SonaStudy.cmd.' }"
+            $updater = $updater.Replace($marker, $extra)
+          }
+          $oldBackup = "@('SonaStudy.html','SonaMusicBridge.ps1','Launch.ps1','SonaUpdater.ps1','version.txt','startup-chime.wav')"
+          $newBackup = "@('SonaStudy.html','SonaMusicBridge.ps1','Launch.ps1','SonaUpdater.ps1','version.txt','startup-chime.wav','SonochkaStudy.exe','SonaStudy.cmd')"
+          $updater = $updater.Replace($oldBackup, $newBackup)
+          Set-Content -LiteralPath $updaterPath -Value $updater -Encoding utf8
+
+          Set-Content -LiteralPath build/app/version.txt -Value '14.1.3' -Encoding ascii
+          @'
+          # Соночка Study 14.1.3
+
+          Критический hotfix запуска и обновления.
+
+          - SonochkaStudy.exe заново собран MSVC как настоящий x64 Windows GUI launcher;
+          - GitHub Actions проверяет MZ, PE и x64 machine header до публикации;
+          - update ZIP содержит EXE и SonaStudy.cmd;
+          - обновлятор отклоняет неполные пакеты без launcher-файлов;
+          - после обновления приложение может корректно перезапуститься.
+          '@ | Set-Content -LiteralPath build/app/CHANGELOG-14.1.3.md -Encoding utf8
+
+          Remove-Item build/base.zip -Force
+          Compress-Archive -Path build/app/* -DestinationPath build/SonochkaStudy-update.zip -CompressionLevel Optimal -Force
+          Copy-Item build/SonochkaStudy-update.zip build/SonochkaStudy-v14.1.3-portable.zip -Force
+          Copy-Item build/app/SonochkaStudy.exe build/SonochkaStudy.exe -Force
+
+          New-Item -ItemType Directory -Path build/test -Force | Out-Null
+          Expand-Archive -LiteralPath build/SonochkaStudy-update.zip -DestinationPath build/test -Force
+          foreach ($required in @('SonaStudy.html','SonaMusicBridge.ps1','Launch.ps1','SonaUpdater.ps1','version.txt','SonaStudy.cmd','SonochkaStudy.exe')) {
+            if (-not (Test-Path -LiteralPath (Join-Path 'build/test' $required))) { throw "Missing from update package: $required" }
+          }
+          if ((Get-Content -LiteralPath build/test/version.txt -Raw).Trim() -ne '14.1.3') { throw 'Wrong version.txt in package.' }
+          $hash = (Get-FileHash -LiteralPath build/SonochkaStudy-update.zip -Algorithm SHA256).Hash.ToLowerInvariant()
+          Set-Content -LiteralPath build/SHA256.txt -Value $hash -Encoding ascii
+          Write-Host "Update SHA256: $hash"
+          Write-Host "Launcher bytes: $((Get-Item build/SonochkaStudy.exe).Length)"
+
+      - name: Publish v14.1.3 release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          gh release create v14.1.3 build/SonochkaStudy-update.zip build/SonochkaStudy-v14.1.3-portable.zip build/SonochkaStudy.exe --repo "${{ github.repository }}" --title "Соночка Study v14.1.3 — исправленный EXE и обновлятор" --notes "Критический hotfix. Launcher заново собран MSVC под Windows x64 и проверен по PE-заголовку. Update ZIP содержит SonochkaStudy.exe и SonaStudy.cmd; неполные пакеты больше не устанавливаются."
+          if ($LASTEXITCODE -ne 0) { throw 'Failed to publish GitHub Release.' }
+
+      - name: Switch stable channel
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $hash = (Get-Content -LiteralPath build/SHA256.txt -Raw).Trim()
+          @"
+          {
+            "version": "14.1.3",
+            "packageUrl": "https://github.com/sicinsane/SonochkaStudy/releases/download/v14.1.3/SonochkaStudy-update.zip",
+            "sha256": "$hash",
+            "notes": "Исправлен критический баг запуска: SonochkaStudy.exe пересобран как x64 Windows GUI launcher, а полный update-пакет содержит все launcher-файлы."
+          }
+          "@ | Set-Content -LiteralPath stable.json -Encoding utf8
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add stable.json
+          git commit -m "Point stable channel to v14.1.3"
+          git push
