@@ -1,0 +1,6 @@
+{
+  "version": "12.0.0",
+  "packageUrl": "https://github.com/sicinsane/SonochkaStudy/releases/download/v12.0.0/SonochkaStudy-v12.0.0.zip",
+  "sha256": "0ae1d9e590611d0f9a394afa47822b9ba8fde3764b4c6a125f127a54976a2cbb",
+  "notes": "Вернули полноценный календарь на месяц, улучшили интерфейс и подключили понятный GitHub-канал обновлений."
+}
