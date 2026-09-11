@@ -1,6 +1,6 @@
 {
-  "version": "14.1.0",
-  "packageUrl": "https://github.com/sicinsane/SonochkaStudy/releases/download/v14.1.0/SonochkaStudy-update.zip",
-  "sha256": "067213b34c91074e8395f358a96efd39ff8d7bdcd41c7b00eb1a330ca85cc68f",
-  "notes": "Исправлены обложки Яндекс Музыки, центрирование play/pause, добавлен фон режима Фокус, звук запуска, общий и раздельный прогресс, выполнение событий календаря и более компактный календарь."
+  "version": "14.1.1",
+  "packageUrl": "https://github.com/sicinsane/SonochkaStudy/releases/download/v14.1.1/SonochkaStudy-update.zip",
+  "sha256": "56dfbf8591bb8ff06faf015098ec7958de58e0e0e38976076ee3b753a0d0d25b",
+  "notes": "Hotfix запуска: update-пакет теперь содержит SonochkaStudy.exe и SonaStudy.cmd. Исправлен перезапуск после обновления."
 }
