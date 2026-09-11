@@ -1,6 +1,6 @@
 {
-  "version": "14.0.0",
-  "packageUrl": "https://github.com/sicinsane/SonochkaStudy/releases/download/v14.0.0/SonochkaStudy-update.zip",
-  "sha256": "277f4c42490b106dcf740f40e0a0efbf4e94e28008fc50cf940ed453ef2e24c9",
-  "notes": "Возвращена домашка, сохранён календарь. Исправлен запуск музыки из папок с пробелами. Добавлено сохранение резервной копии данных."
+  "version": "14.1.0",
+  "packageUrl": "https://github.com/sicinsane/SonochkaStudy/releases/download/v14.1.0/SonochkaStudy-update.zip",
+  "sha256": "067213b34c91074e8395f358a96efd39ff8d7bdcd41c7b00eb1a330ca85cc68f",
+  "notes": "Исправлены обложки Яндекс Музыки, центрирование play/pause, добавлен фон режима Фокус, звук запуска, общий и раздельный прогресс, выполнение событий календаря и более компактный календарь."
 }
