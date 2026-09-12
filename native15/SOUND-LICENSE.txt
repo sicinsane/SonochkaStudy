@@ -1,0 +1,4 @@
+Startup meow: "Cute Kitten Meow" by Breviceps (vocal performance).
+Source: https://freesound.org/people/Breviceps/sounds/448084/
+License: CC0 1.0 https://creativecommons.org/publicdomain/zero/1.0/
+Converted from the public MP3 preview to PCM WAV; volume reduced to 65%.

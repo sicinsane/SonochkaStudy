@@ -1,0 +1,46 @@
+name: Release v15.0.0 Osnova
+on:
+  push:
+    paths:
+      - '.github/workflows/release-v15.0.0.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Prepare v15 UI and native installer
+        shell: pwsh
+        run: |
+          Invoke-WebRequest 'https://github.com/sicinsane/SonochkaStudy/releases/download/v14.2.1/SonochkaStudy-update.zip' -OutFile base.zip
+          if((Get-FileHash base.zip -Algorithm SHA256).Hash -ne '788655ad7436b5f87f4e123dcc93eed13da41ecdc1ca48700e42f3539cb9e37c'){throw 'Base checksum mismatch'}
+          Expand-Archive base.zip app
+          python native15/prepare.py
+          if($LASTEXITCODE){throw 'Preparation failed'}
+          & native15/build.ps1
+          if($LASTEXITCODE){throw 'Build failed'}
+          foreach($file in @('app/SonochkaStudy.exe','release15/SonochkaStudySetup.exe')){
+            $b=[IO.File]::ReadAllBytes((Resolve-Path $file));$pe=[BitConverter]::ToInt32($b,60)
+            if($b[0] -ne 77 -or $b[1] -ne 90 -or [BitConverter]::ToUInt16($b,$pe+24+68) -ne 2){throw 'Not a Windows GUI executable'}
+          }
+          python -c "import zipfile; z=zipfile.ZipFile('release15/SonochkaStudy-update.zip'); assert z.testzip() is None; assert all(x in z.namelist() for x in ['SonochkaStudy.exe','WebView2Loader.dll','WallpaperEngine.ps1','startup-chime.wav'])"
+      - name: Publish Osnova and update channel
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create v15.0.0 release15/SonochkaStudySetup.exe release15/SonochkaStudy-update.zip release15/SonochkaStudy-v15.0.0-portable.zip --title 'v15.0.0 - Основа' --notes-file release-notes/v15.0.0.md --latest
+          if($LASTEXITCODE){throw 'Release upload failed'}
+          $hash=(Get-FileHash release15/SonochkaStudy-update.zip -Algorithm SHA256).Hash.ToLowerInvariant()
+          @{version='15.0.0';packageUrl='https://github.com/sicinsane/SonochkaStudy/releases/download/v15.0.0/SonochkaStudy-update.zip';sha256=$hash;notes=[IO.File]::ReadAllText((Resolve-Path release-notes/v15.0.0.md))} | ConvertTo-Json | Set-Content stable.json -Encoding utf8
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add stable.json
+          git commit -m 'Publish v15.0.0 Osnova stable channel'
+          git push
+          if($LASTEXITCODE){throw 'Channel update failed'}
